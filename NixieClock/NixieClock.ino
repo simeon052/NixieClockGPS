@@ -332,51 +332,7 @@ void loop() {
 				}
 			}
 #else
-	while (Serial1.available() > 0){
-gps.encode(Serial1.read());
-	}
-	if(gps.time.isValid() && gps.date.isValid()){
-//			if (gps.encode(Serial1.read())) { // process gps messages
-// setRTCDateTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year,1);
-//				setTime(gps.time.hour(), gps.time.minute(), gps.time.second, gps.date.day(), gps.date.month(), gps.date.year());
-				Serial.println("GPS is ready");
-				// when TinyGPS reports new data...
-				GPS_Timezone_Adjust();
-				     int Year;
-      byte Month, Day, Hour, Minute, Second;
-
-			Year = gps.date.year();
-			Month = gps.date.month();
-			Day = gps.date.day();
-			Hour = gps.time.hour() + 9; // JST
-			if(Hour >= 24){
-				Hour -= 24;
-				Day += 1;
-			}
-			Minute = gps.time.minute();
-			Second = gps.time.second();
-//				        setTime(Hour, Minute, Second, Day, Month, Year);
-
-				Serial.print(gps.date.value()); // Raw date in DDMMYY format (u32)
-				Serial.println(gps.time.value()); // Raw time in HHMMSSCC format (u32)
-				Serial.print(Year); // Year (2000+) (u16)
-				Serial.print("/");
-				Serial.print(Month); // Month(1-12) (u8)
-				Serial.print("/");
-				Serial.print(Day); // Day (1-31) (u8)
-				Serial.print(" ");
-				Serial.println(Hour); // Hour (0-23) (u8)
-				Serial.print(":");
-				Serial.print(Minute); // Minute (0-59) (u8)
-				Serial.print(":");
-				Serial.print(Second); // Second (0-59) (u8)
-				Serial.print(" ");
-				Serial.print(gps.time.centisecond()); // 100ths of a second (0-99) (u8)
-			}
-			else 
-			{
-				Serial.println("GPS is not ready.");
-			}
+			GPS_Timezone_Adjust();
 #endif
 		}
 	}
@@ -571,8 +527,10 @@ const int UTC_offset = 9;   // Japanese Standard Time
 void GPS_Timezone_Adjust(){
   
   while (Serial1.available()) {
-    if (gps.encode(Serial1.read())) { 
-      
+    gps.encode(Serial1.read());
+	} 
+	if(gps.time.isValid() && gps.date.isValid()){
+
       int Year = gps.date.year();
       byte Month = gps.date.month();
       byte Day = gps.date.day();
@@ -584,8 +542,23 @@ void GPS_Timezone_Adjust(){
         setTime(Hour, Minute, Second, Day, Month, Year);
         // Calc current Time Zone time by offset value
         adjustTime(UTC_offset * SECS_PER_HOUR);           
-      
-    }
+
+				Serial.print(gps.date.value()); // Raw date in DDMMYY format (u32)
+				Serial.println(gps.time.value()); // Raw time in HHMMSSCC format (u32)
+				Serial.print(Year); // Year (2000+) (u16)
+				Serial.print("/");
+				Serial.print(Month); // Month(1-12) (u8)
+				Serial.print("/");
+				Serial.print(Day); // Day (1-31) (u8)
+				Serial.print(" ");
+				Serial.print(Hour); // Hour (0-23) (u8)
+				Serial.print(":");
+				Serial.print(Minute); // Minute (0-59) (u8)
+				Serial.print(":");
+				Serial.print(Second); // Second (0-59) (u8)
+				Serial.print(" ");
+				Serial.print(gps.time.centisecond()); // 100ths of a second (0-99) (u8)
+				Serial.println();
   }
 }
 String PreZero(int digit)
