@@ -311,7 +311,7 @@ void loop() {
 		getRTCTime();
 		setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
 		Serial.println("sync");
-
+		sensors.requestTemperatures();
 		Serial.print(sensors.getTempCByIndex(0));
 		Serial.println("c");
 
