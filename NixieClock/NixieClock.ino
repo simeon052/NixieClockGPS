@@ -22,6 +22,7 @@ const String FirmwareVersion="010210";
 #include <OneWire.h>
 //#include <IRremote.h>
 #include <DallasTemperature.h>
+#include <TinyGPSPlus\TinyGPS++.h>
 
 //int RECV_PIN = 4;
 //IRrecv irrecv(RECV_PIN);
@@ -169,6 +170,8 @@ const char *monthName[12] = {
 
 tmElements_t tm;
 
+TinyGPSPlus gps;
+
 /*******************************************************************************************************
 Init Programm
 *******************************************************************************************************/
@@ -194,7 +197,7 @@ void setup()
 	// setRTCDateTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year,1);
   }
   
-  //Serial1.begin(9600);
+  Serial1.begin(9600);
   
 	if (EEPROM.read(HourFormatEEPROMAddress)!=12) value[hModeValueIndex]=24; else value[hModeValueIndex]=12;
 	if (EEPROM.read(RGBLEDsEEPROMAddress)!=0) RGBLedsOn=true; else RGBLedsOn=false;
@@ -294,24 +297,61 @@ MAIN Programm
 void loop() {
 
 
-  // call sensors.requestTemperatures() to issue a global temperature 
-  // request to all devices on the bus
-	//  Serial.print("Requesting temperatures...");
-	//  sensors.requestTemperatures(); // Send the command to get temperatures
-	//  Serial.println("DONE");
+	// call sensors.requestTemperatures() to issue a global temperature 
+	// request to all devices on the bus
+	  //  Serial.print("Requesting temperatures...");
+	  //  sensors.requestTemperatures(); // Send the command to get temperatures
+	  //  Serial.println("DONE");
 
-	//  Serial.print("Temperature for the device 1 (index 0) is: ");
-	//  Serial.println(sensors.getTempCByIndex(0));
+	  //  Serial.print("Temperature for the device 1 (index 0) is: ");
+	  //  Serial.println(sensors.getTempCByIndex(0));
 
- if (((millis()%10000)==0)&&(RTC_present)) //synchronize with RTC every 10 seconds
- {
-  getRTCTime();
-  setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
-  Serial.println("sync");
+	if (((millis() % 10000) == 0) && (RTC_present)) //synchronize with RTC every 10 seconds
+	{
+		getRTCTime();
+		setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
+		Serial.println("sync");
 
-	Serial.println(sensors.getTempCByIndex(0));
- }
-  
+		Serial.print(sensors.getTempCByIndex(0));
+		Serial.println("c");
+
+		if(Serial1.available() > 0) {
+
+// check GPS data
+			//while (1) {
+			//	char c = Serial1.read();
+			//	if (c != -1) {
+			//		Serial.print(c);
+			//	}
+			//	else {
+			//		Serial.println();
+			//		break;
+			//	}
+			//}
+
+			if (gps.encode(Serial1.read())) { // process gps messages
+// setRTCDateTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year,1);
+//				setTime(gps.time.hour(), gps.time.minute(), gps.time.second, gps.date.day(), gps.date.month(), gps.date.year());
+				Serial.println("GPS is ready");
+				// when TinyGPS reports new data...
+				Serial.println(gps.date.value()); // Raw date in DDMMYY format (u32)
+				Serial.println(gps.date.year()); // Year (2000+) (u16)
+				Serial.println(gps.date.month()); // Month (1-12) (u8)
+				Serial.println(gps.date.day()); // Day (1-31) (u8)
+				Serial.println(gps.time.value()); // Raw time in HHMMSSCC format (u32)
+				Serial.println(gps.time.hour()); // Hour (0-23) (u8)
+				Serial.println(gps.time.minute()); // Minute (0-59) (u8)
+				Serial.println(gps.time.second()); // Second (0-59) (u8)
+				Serial.println(gps.time.centisecond()); // 100ths of a second (0-99) (u8)
+			}
+			else 
+			{
+				Serial.println("GPS is not ready.");
+			}
+		}
+	}
+
+
 //  p=playmusic(p);
   
   if ((millis()-prevTime4FireWorks)>5)
