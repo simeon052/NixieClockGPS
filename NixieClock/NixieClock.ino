@@ -1,4 +1,4 @@
-const String FirmwareVersion="010210";
+const String FirmwareVersion="010211";
 //Format                _X.XXX_    
 //NIXIE CLOCK SHIELD NCS314 v 1.2 by GRA & AFCH (fominalec@gmail.com)
 //1.021 31.01.2017
@@ -16,13 +16,14 @@ const String FirmwareVersion="010210";
 #include <SPI.h>
 #include <Wire.h>
 #include <ClickButton.h>
+#include <Time.h>
 #include <TimeLib.h>
 #include <Tone.h>
 #include <EEPROM.h>
 #include <OneWire.h>
 //#include <IRremote.h>
 #include <DallasTemperature.h>
-#include <TinyGPSPlus\TinyGPS++.h>
+#include <TinyGPS++.h>
 
 //int RECV_PIN = 4;
 //IRrecv irrecv(RECV_PIN);
@@ -271,7 +272,7 @@ void setup()
   }
   setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
   digitalWrite(DHVpin, LOW); // off MAX1771 Driver  Hight Voltage(DHV) 110-220V
-  //setRTCDateTime(RTC_hours,RTC_minutes,RTC_seconds,RTC_day,RTC_month,RTC_year,1); //„x„p„„y„ƒ„„r„p„u„} „„„€„|„Ž„{„€ „‰„„„€ „ƒ„‰„y„„„p„~„~„€„u „r„‚„u„}„‘ „r RTC „‰„„„€„q„ „x„p„„…„ƒ„„„y„„„Ž „~„€„r„…„ „}„y„{„‚„€„ƒ„‡„u„}„…
+  //setRTCDateTime(RTC_hours,RTC_minutes,RTC_seconds,RTC_day,RTC_month,RTC_year,1); 
   digitalWrite(DHVpin, HIGH); // on MAX1771 Driver  Hight Voltage(DHV) 110-220V
   //p=song;
 }
@@ -289,7 +290,7 @@ int GreenLight=0;
 int BlueLight=0;
 unsigned long prevTime=0; // time of lase tube was lit
 unsigned long prevTime4FireWorks=0;  //time of last RGB changed
-//int minuteL=0; //„}„|„p„t„Š„p„‘ „ˆ„y„†„‚„p „}„y„~„…„„
+//int minuteL=0;
 
 /***************************************************************************************************************
 MAIN Programm
@@ -309,45 +310,74 @@ void loop() {
 	if (((millis() % 10000) == 0) && (RTC_present)) //synchronize with RTC every 10 seconds
 	{
 		getRTCTime();
-		setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
+//		setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
 		Serial.println("sync");
 		sensors.requestTemperatures();
 		Serial.print(sensors.getTempCByIndex(0));
 		Serial.println("c");
 
 		if(Serial1.available() > 0) {
+// #define GPS_CHECK
 
-// check GPS data
-			//while (1) {
-			//	char c = Serial1.read();
-			//	if (c != -1) {
-			//		Serial.print(c);
-			//	}
-			//	else {
-			//		Serial.println();
-			//		break;
-			//	}
-			//}
-
-			if (gps.encode(Serial1.read())) { // process gps messages
+#ifdef GPS_CHECK
+	// Check GPS data
+			while (1) {
+				char c = Serial1.read();
+				if (c != -1) {
+					Serial.print(c);
+				}
+				else {
+					Serial.println();
+					break;
+				}
+			}
+#else
+	while (Serial1.available() > 0){
+gps.encode(Serial1.read());
+	}
+	if(gps.time.isValid() && gps.date.isValid()){
+//			if (gps.encode(Serial1.read())) { // process gps messages
 // setRTCDateTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year,1);
 //				setTime(gps.time.hour(), gps.time.minute(), gps.time.second, gps.date.day(), gps.date.month(), gps.date.year());
 				Serial.println("GPS is ready");
 				// when TinyGPS reports new data...
-				Serial.println(gps.date.value()); // Raw date in DDMMYY format (u32)
-				Serial.println(gps.date.year()); // Year (2000+) (u16)
-				Serial.println(gps.date.month()); // Month (1-12) (u8)
-				Serial.println(gps.date.day()); // Day (1-31) (u8)
+				GPS_Timezone_Adjust();
+				     int Year;
+      byte Month, Day, Hour, Minute, Second;
+
+			Year = gps.date.year();
+			Month = gps.date.month();
+			Day = gps.date.day();
+			Hour = gps.time.hour() + 9; // JST
+			if(Hour >= 24){
+				Hour -= 24;
+				Day += 1;
+			}
+			Minute = gps.time.minute();
+			Second = gps.time.second();
+//				        setTime(Hour, Minute, Second, Day, Month, Year);
+
+				Serial.print(gps.date.value()); // Raw date in DDMMYY format (u32)
 				Serial.println(gps.time.value()); // Raw time in HHMMSSCC format (u32)
-				Serial.println(gps.time.hour()); // Hour (0-23) (u8)
-				Serial.println(gps.time.minute()); // Minute (0-59) (u8)
-				Serial.println(gps.time.second()); // Second (0-59) (u8)
-				Serial.println(gps.time.centisecond()); // 100ths of a second (0-99) (u8)
+				Serial.print(Year); // Year (2000+) (u16)
+				Serial.print("/");
+				Serial.print(Month); // Month(1-12) (u8)
+				Serial.print("/");
+				Serial.print(Day); // Day (1-31) (u8)
+				Serial.print(" ");
+				Serial.println(Hour); // Hour (0-23) (u8)
+				Serial.print(":");
+				Serial.print(Minute); // Minute (0-59) (u8)
+				Serial.print(":");
+				Serial.print(Second); // Second (0-59) (u8)
+				Serial.print(" ");
+				Serial.print(gps.time.centisecond()); // 100ths of a second (0-99) (u8)
 			}
 			else 
 			{
 				Serial.println("GPS is not ready.");
 			}
+#endif
 		}
 	}
 
@@ -536,6 +566,28 @@ void loop() {
   }
 }
 
+// Change this value to suit your Time Zone
+const int UTC_offset = 9;   // Japanese Standard Time
+void GPS_Timezone_Adjust(){
+  
+  while (Serial1.available()) {
+    if (gps.encode(Serial1.read())) { 
+      
+      int Year = gps.date.year();
+      byte Month = gps.date.month();
+      byte Day = gps.date.day();
+      byte Hour = gps.time.hour();
+      byte Minute = gps.time.minute();
+      byte Second = gps.time.second();
+
+        // Set Time from GPS data string
+        setTime(Hour, Minute, Second, Day, Month, Year);
+        // Calc current Time Zone time by offset value
+        adjustTime(UTC_offset * SECS_PER_HOUR);           
+      
+    }
+  }
+}
 String PreZero(int digit)
 {
   if (digit<10) return String("0")+String(digit);
@@ -1120,7 +1172,7 @@ void dicrementValue()
 	  if (value[menuPosition]<minValue[menuPosition]) value[menuPosition]=maxValue[menuPosition];
 	  if (menuPosition==Alarm01) 
 		{
-		 if (value[menuPosition]==1) /*digitalWrite(pinUpperDots, HIGH);*/ dotPattern=B10000000;//turn on upper dots „r„{„|„„‰„p„u„} „r„u„‚„‡„~„y„u „„„€„‰„{„y
+		 if (value[menuPosition]==1) /*digitalWrite(pinUpperDots, HIGH);*/ dotPattern=B10000000;//turn on upper dots ï¿½rï¿½{ï¿½|ï¿½ï¿½ï¿½ï¿½ï¿½pï¿½uï¿½} ï¿½rï¿½uï¿½ï¿½ï¿½ï¿½ï¿½~ï¿½yï¿½u ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½{ï¿½y
 		   else /*digitalWrite(pinUpperDots, LOW);*/ dotPattern=B00000000; //turn off upper dots
 		}
 	  injectDigits(blinkMask, value[menuPosition]);
