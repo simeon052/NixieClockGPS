@@ -552,7 +552,7 @@ void GPS_Timezone_Adjust(){
 			if(previousDay != gps.date.day()){
 				Serial.println("Set date from GPS");
 
-				setRTCDateTime(Hour, Minute, Second, Day, Month, Year);
+				setRTCDateTime(Hour, Minute, Second, Day, Month, CalendarYrToTm(Year)-30);
 				getRTCTime();
 				previousDay = Day;
 			}
