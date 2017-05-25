@@ -280,6 +280,9 @@ void setup()
 	}
   }
   setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
+	adjustTime(UTC_offset * SECS_PER_HOUR);           
+	adjustTime(14);
+
   digitalWrite(DHVpin, LOW); // off MAX1771 Driver  Hight Voltage(DHV) 110-220V
   //setRTCDateTime(RTC_hours,RTC_minutes,RTC_seconds,RTC_day,RTC_month,RTC_year,1); 
   digitalWrite(DHVpin, HIGH); // on MAX1771 Driver  Hight Voltage(DHV) 110-220V
@@ -509,8 +512,8 @@ void loop() {
   }
 }
 
+
 void GPS_Timezone_Adjust(){
-  
 
   while (Serial1.available()) {
     gps.encode(Serial1.read());
