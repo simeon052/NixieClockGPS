@@ -164,6 +164,8 @@ int functionDownButton=0;
 int functionUpButton=0;
 bool LEDsLock=false;
 
+byte previousDay;
+
 const char *monthName[12] = {
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -172,6 +174,9 @@ const char *monthName[12] = {
 tmElements_t tm;
 
 TinyGPSPlus gps;
+// Change this value to suit your Time Zone
+const int UTC_offset = 9;   // Japanese Standard Time
+
 
 /*******************************************************************************************************
 Init Programm
@@ -198,7 +203,8 @@ void setup()
 	// setRTCDateTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year,1);
   }
   
-  Serial1.begin(9600);
+  Serial1.begin(9600); // For GPS
+	previousDay = 0;
   
 	if (EEPROM.read(HourFormatEEPROMAddress)!=12) value[hModeValueIndex]=24; else value[hModeValueIndex]=12;
 	if (EEPROM.read(RGBLEDsEEPROMAddress)!=0) RGBLedsOn=true; else RGBLedsOn=false;
@@ -255,6 +261,9 @@ void setup()
 	{
 	  setLEDsFromEEPROM();
 	}
+
+	GPS_Timezone_Adjust();
+
   getRTCTime();
   byte prevSeconds=RTC_seconds;
   unsigned long RTC_ReadingStartTime=millis();
@@ -297,44 +306,22 @@ MAIN Programm
 ***************************************************************************************************************/
 void loop() {
 
-
-	// call sensors.requestTemperatures() to issue a global temperature 
-	// request to all devices on the bus
-	  //  Serial.print("Requesting temperatures...");
-	  //  sensors.requestTemperatures(); // Send the command to get temperatures
-	  //  Serial.println("DONE");
-
-	  //  Serial.print("Temperature for the device 1 (index 0) is: ");
-	  //  Serial.println(sensors.getTempCByIndex(0));
-
 	if (((millis() % 10000) == 0) && (RTC_present)) //synchronize with RTC every 10 seconds
 	{
+		if(Serial1.available() > 0) {
+			GPS_Timezone_Adjust();
+		}
+
 		getRTCTime();
-//		setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
-		Serial.println("sync");
+		setTime(RTC_hours, RTC_minutes, RTC_seconds, RTC_day, RTC_month, RTC_year);
+		adjustTime(UTC_offset * SECS_PER_HOUR);           
+		adjustTime(14);
+
+		// Update Temprature
 		sensors.requestTemperatures();
 		Serial.print(sensors.getTempCByIndex(0));
 		Serial.println("c");
 
-		if(Serial1.available() > 0) {
-// #define GPS_CHECK
-
-#ifdef GPS_CHECK
-	// Check GPS data
-			while (1) {
-				char c = Serial1.read();
-				if (c != -1) {
-					Serial.print(c);
-				}
-				else {
-					Serial.println();
-					break;
-				}
-			}
-#else
-			GPS_Timezone_Adjust();
-#endif
-		}
 	}
 
 
@@ -522,10 +509,9 @@ void loop() {
   }
 }
 
-// Change this value to suit your Time Zone
-const int UTC_offset = 9;   // Japanese Standard Time
 void GPS_Timezone_Adjust(){
   
+
   while (Serial1.available()) {
     gps.encode(Serial1.read());
 	} 
@@ -539,9 +525,9 @@ void GPS_Timezone_Adjust(){
       byte Second = gps.time.second();
 
         // Set Time from GPS data string
-        setTime(Hour, Minute, Second, Day, Month, Year);
+        // setTime(Hour, Minute, Second, Day, Month, Year);
         // Calc current Time Zone time by offset value
-        adjustTime(UTC_offset * SECS_PER_HOUR);           
+        // adjustTime(UTC_offset * SECS_PER_HOUR);           
 
 				Serial.print(gps.date.value()); // Raw date in DDMMYY format (u32)
 				Serial.println(gps.time.value()); // Raw time in HHMMSSCC format (u32)
@@ -559,6 +545,14 @@ void GPS_Timezone_Adjust(){
 				Serial.print(" ");
 				Serial.print(gps.time.centisecond()); // 100ths of a second (0-99) (u8)
 				Serial.println();
+
+			if(previousDay != gps.date.day()){
+				Serial.println("Set date from GPS");
+
+				setRTCDateTime(Hour, Minute, Second, Day, Month, Year);
+				getRTCTime();
+				previousDay = Day;
+			}
   }
 }
 String PreZero(int digit)
